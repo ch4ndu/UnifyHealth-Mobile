@@ -4,9 +4,9 @@
     <dict>
         <key>CADisableMinimumFrameDurationOnPhone</key>
         <true />
+        <key>NSHealthShareUsageDescription</key>
+        <string>We need to read your health data to sync your activity, body measurements, and vitals
+            within the app.
+        </string>
     </dict>
-    <key>NSHealthShareUsageDescription</key>
-    <string>We need to read your health data to sync your activity, body measurements, and vitals
-        within the app.
-    </string>
 </plist>

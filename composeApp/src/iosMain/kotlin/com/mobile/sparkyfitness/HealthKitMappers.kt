@@ -341,8 +341,10 @@ internal fun HealthDataType.toHkCategoryTypeIdentifier(): HKCategoryTypeIdentifi
 }
 
 internal fun HealthDataType.toHkCorrelationTypeIdentifier(): HKCorrelationTypeIdentifier? {
+//    HKQuantityTypeIdentifierBloodPressureSystolic
+//    HKQuantityTypeIdentifierBloodPressureDiastolic
     return when (this) {
-        HealthDataType.BLOOD_PRESSURE -> HKCorrelationTypeIdentifierBloodPressure
+//        HealthDataType.BLOOD_PRESSURE -> HKCorrelationTypeIdentifierBloodPressure
         else -> null
     }
 }

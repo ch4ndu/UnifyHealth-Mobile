@@ -5,6 +5,8 @@ package com.mobile.sparkyfitness
 import com.mobile.sparkyfitness.model.HealthData
 import com.mobile.sparkyfitness.model.HealthDataType
 import kotlinx.cinterop.ExperimentalForeignApi
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.datetime.Instant
 import platform.Foundation.NSDate
 import platform.Foundation.NSPredicate
@@ -28,7 +30,7 @@ import kotlin.coroutines.suspendCoroutine
 actual class HealthService {
     private val healthStore = HKHealthStore()
 
-    actual val isPermissionSheetVisible: Boolean = false
+    actual val isPermissionSheetVisible: StateFlow<Boolean> = MutableStateFlow(false)
 
     actual fun showPermissionSheet() {}
     actual fun hidePermissionSheet() {}
@@ -157,4 +159,7 @@ actual class HealthService {
             healthStore.executeQuery(query)
         }
     }
+
+    actual val permissionsToRequest: Set<String>
+        get() = emptySet()
 }

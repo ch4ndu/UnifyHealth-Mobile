@@ -6,6 +6,7 @@ plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.composeMultiplatform)
     alias(libs.plugins.composeCompiler)
+//    alias(libs.plugins.kotlinAndroid)
 }
 
 kotlin {
@@ -33,6 +34,7 @@ kotlin {
             implementation(libs.androidx.activity.compose)
             implementation(libs.androidx.connect.client)
             implementation(libs.kotlinx.datetime)
+            implementation(files("libs/samsung-health-data-1.5.1.aar"))
         }
         commonMain.dependencies {
             implementation(compose.runtime)
@@ -79,6 +81,9 @@ android {
 }
 
 dependencies {
+    implementation(libs.androidx.appcompat)
+    implementation(libs.material)
+    implementation(libs.androidx.activity)
     debugImplementation(compose.uiTooling)
 }
 

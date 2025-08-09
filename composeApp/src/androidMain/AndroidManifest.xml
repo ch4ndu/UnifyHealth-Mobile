@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
-
     <!-- Activity -->
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" />
@@ -8,45 +7,47 @@
     <uses-permission android:name="android.permission.health.READ_ACTIVE_CALORIES_BURNED" />
     <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE" />
     <uses-permission android:name="android.permission.health.READ_MOVE_MINUTES" />
-    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
-
-    <!-- Body Measurements -->
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" /> <!-- Body Measurements -->
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_HEIGHT" />
     <uses-permission android:name="android.permission.health.READ_BODY_FAT_PERCENTAGE" />
     <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" />
     <uses-permission android:name="android.permission.health.READ_BODY_MASS_INDEX" />
-    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE" />
-
-    <!-- Vitals -->
+    <uses-permission android:name="android.permission.health.READ_BODY_TEMPERATURE" /> <!-- Vitals -->
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_HEART_RATE_VARIABILITY" />
     <uses-permission android:name="android.permission.health.READ_BLOOD_PRESSURE" />
     <uses-permission android:name="android.permission.health.READ_BLOOD_GLUCOSE" />
     <uses-permission android:name="android.permission.health.READ_OXYGEN_SATURATION" />
     <uses-permission android:name="android.permission.health.READ_RESPIRATORY_RATE" />
-    <uses-permission android:name="android.permission.health.READ_VO2_MAX" />
-
-    <!-- Sleep & Nutrition -->
+    <uses-permission android:name="android.permission.health.READ_VO2_MAX" /> <!-- Sleep & Nutrition -->
     <uses-permission android:name="android.permission.health.READ_SLEEP" />
     <uses-permission android:name="android.permission.health.READ_HYDRATION" />
-    <uses-permission android:name="android.permission.health.READ_NUTRITION" />
-
-    <!-- Cycle Tracking -->
+    <uses-permission android:name="android.permission.health.READ_NUTRITION" /> <!-- Cycle Tracking -->
     <uses-permission android:name="android.permission.health.READ_MENSTRUATION" />
     <uses-permission android:name="android.permission.health.READ_OVULATION_TEST" />
     <uses-permission android:name="android.permission.health.READ_CERVICAL_MUCUS" />
     <uses-permission android:name="android.permission.health.READ_SEXUAL_ACTIVITY" />
-    <uses-permission android:name="android.permission.health.READ_INTERMENSTRUAL_BLEEDING" />
-
-    <!-- General permission to interact with the Samsung Health app -->
+    <uses-permission android:name="android.permission.health.READ_INTERMENSTRUAL_BLEEDING" /> <!-- General permission to interact with the Samsung Health app -->
     <uses-permission android:name="com.samsung.android.sdk.permission.application.SamsungHealth" />
-
     <!--
       This is a legacy permission but is still good practice to include.
       The primary way to declare permissions now is via the <meta-data> tag.
     -->
     <uses-permission android:name="com.samsung.android.health.permission.read" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+
+        <!--
+             This is required such that the app can query and resolve packages that have written
+             Health Connect data, and obtain their friendly App Name and Icon to show for data
+             attribution in the app
+        -->
+        <intent>
+            <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+        </intent>
+    </queries>
 
     <application
         android:allowBackup="true"
@@ -63,37 +64,48 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-        </activity>
 
-        <!--        <activity-->
-        <!--            android:name=".PermissionsRationaleActivity"-->
-        <!--            android:exported="true">-->
-        <!--            <intent-filter>-->
-        <!--                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />-->
-        <!--            </intent-filter>-->
-        <!--        </activity>-->
+            <!--
+                The app needs to handle this intent and display an appropriate privacy policy
+                explaining how the user's data will be used and handled.
 
-        <!--        &lt;!&ndash; For versions starting Android 14, create an activity alias to show the rationale-->
-        <!--             of Health Connect permissions once users click the privacy policy link. &ndash;&gt;-->
-        <!--        <activity-alias-->
-        <!--            android:name="ViewPermissionUsageActivity"-->
-        <!--            android:exported="true"-->
-        <!--            android:targetActivity=".PermissionsRationaleActivity"-->
-        <!--            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">-->
-        <!--            <intent-filter>-->
-        <!--                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />-->
-        <!--                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />-->
-        <!--            </intent-filter>-->
-        <!--        </activity-alias>-->
+                This intent is sent to the app when the user clicks on the "privacy policy" link
+                in the Health Connect permissions dialog.
+            -->
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+
+            <!-- Permission handling for Android 14 -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity>  <!-- For supported versions through Android 13, create an activity to show the rationale
+       of Health Connect permissions once users click the privacy policy link. -->
+        <activity
+            android:name=".PermissionsRationaleActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity><!-- For versions starting Android 14, create an activity alias to show the rationale
+       of Health Connect permissions once users click the privacy policy link. -->
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:targetActivity=".PermissionsRationaleActivity"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
+
         <meta-data
             android:name="com.samsung.android.health.permission.read"
             android:value="com.samsung.health.step_count;com.samsung.health.distance;com.samsung.health.floor_climbed;com.samsung.health.active_time;com.samsung.health.burned_calorie;com.samsung.health.exercise;com.samsung.health.weight;com.samsung.health.height;com.samsung.health.body_fat;com.samsung.health.body_mass_index;com.samsung.health.heart_rate;com.samsung.health.blood_pressure;com.samsung.health.blood_glucose;com.samsung.health.oxygen_saturation;com.samsung.health.sleep;com.samsung.health.water_intake" />
-        <!-- Note: Not all data types have a direct 1-to-1 mapping in the Samsung SDK. This list covers the most common ones. -->
-
-
     </application>
-    <queries>
-        <package android:name="com.google.android.apps.healthdata" />
-    </queries>
 
 </manifest>

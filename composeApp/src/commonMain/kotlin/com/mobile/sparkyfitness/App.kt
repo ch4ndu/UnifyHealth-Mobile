@@ -11,9 +11,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.BasicText
+import androidx.compose.foundation.text.TextAutoSize
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -42,27 +44,24 @@ import com.mobile.sparkyfitness.model.HealthData
 import com.mobile.sparkyfitness.model.HealthDataType
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.days
 
 @Composable
-fun App(healthService: HealthService) {
+fun App(healthService: HealthService?) { // Service is now nullable
     val coroutineScope = rememberCoroutineScope()
-    var isAvailable by remember { mutableStateOf(false) }
-    var hasPermissions by remember { mutableStateOf(false) }
+    var hasRequestedPermissions by remember { mutableStateOf(false) }
     var healthData by remember { mutableStateOf<List<HealthData>>(emptyList()) }
-    var message by remember { mutableStateOf("Welcome to Health App!") }
+    var message by remember { mutableStateOf("Checking for available health sources...") }
     var isLoading by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         isLoading = true
-        isAvailable = healthService.isAvailable()
-        if (isAvailable) {
-            // On iOS, we can't check permissions, so we just request them.
-            // On Android, this check is more meaningful.
-            hasPermissions = healthService.hasPermissions(HealthDataType.entries.toSet())
-            message = if (hasPermissions) "Ready to fetch data." else "Please grant permissions."
-        } else {
-            message = "Health service not available on this device."
+        val isServiceAvailable = healthService?.isAvailable() ?: false
+        if (!isServiceAvailable) {
+            message = "No health data source available on this device."
         }
         isLoading = false
     }
@@ -73,10 +72,21 @@ fun App(healthService: HealthService) {
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text(
-                    message,
-                    style = MaterialTheme.typography.titleMedium,
-                    textAlign = TextAlign.Center
+                if (healthService == null) {
+                    message = "No health data source available on this device."
+                } else if (!hasRequestedPermissions) {
+                    message = "Ready to connect to health service."
+                }
+
+                BasicText(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = message,
+                    style = MaterialTheme.typography.headlineMedium,
+                    maxLines = 2,
+                    autoSize = TextAutoSize.StepBased(
+                        maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                        minFontSize = MaterialTheme.typography.headlineSmall.fontSize
+                    )
                 )
                 if (isLoading) {
                     Spacer(Modifier.height(16.dp))
@@ -84,24 +94,36 @@ fun App(healthService: HealthService) {
                 }
                 Spacer(Modifier.height(16.dp))
 
-                if (isAvailable && !hasPermissions) {
+                if (healthService != null && !hasRequestedPermissions) {
                     Button(onClick = {
                         coroutineScope.launch {
-                            healthService.requestAuthorization(HealthDataType.values().toSet())
-                            // After requesting, we assume we have them for UI purposes.
-                            hasPermissions = true
-                            message = "Permissions requested. You can now try fetching data."
+                            isLoading = true
+                            healthService.requestAuthorization(HealthDataType.entries.toSet())
+                            hasRequestedPermissions = true
+                            message = "Permissions requested. You can now fetch data."
+                            isLoading = false
                         }
                     }) {
-                        Text("Request All Health Permissions")
+                        Text("Connect and Request Permissions")
                     }
                 }
 
-                if (hasPermissions) {
-                    DataTypeGrid(healthService, onLoading = { isLoading = it }) { data, msg ->
-                        healthData = data
-                        message = msg
-                    }
+                if (hasRequestedPermissions) {
+                    DataTypeGrid(
+                        modifier = Modifier.fillMaxWidth().weight(0.4f),
+                        onFetch = { type ->
+                            healthService?.readData(
+                                Clock.System.now().minus(15.days),
+                                Clock.System.now(),
+                                type
+                            ) ?: emptyList()
+                        },
+                        onLoading = { isLoading = it },
+                        onResult = { data, msg ->
+                            healthData = data
+                            message = msg
+                        }
+                    )
                 }
 
                 Spacer(Modifier.height(16.dp))
@@ -119,28 +141,27 @@ fun App(healthService: HealthService) {
 
 @Composable
 private fun DataTypeGrid(
-    healthService: HealthService,
+    modifier: Modifier,
+    onFetch: suspend (HealthDataType) -> List<HealthData>,
     onLoading: (Boolean) -> Unit,
     onResult: (List<HealthData>, String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
 
-    LazyVerticalGrid(
-        columns = GridCells.Adaptive(minSize = 120.dp),
-        modifier = Modifier.fillMaxWidth(),
+    LazyHorizontalGrid(
+        rows = GridCells.Fixed(3),
+        modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(HealthDataType.values()) { type ->
+        items(HealthDataType.entries.toTypedArray()) { type ->
             Button(
-                modifier = Modifier.height(60.dp),
+                modifier = Modifier.height(60.dp).fillMaxWidth(1f),
                 onClick = {
                     coroutineScope.launch {
                         onLoading(true)
                         onResult(emptyList(), "Fetching ${type.name}...")
-                        val now = Clock.System.now()
-                        val startTime = now.minus(1.days)
-                        val data = healthService.readData(startTime, now, type)
+                        val data = onFetch(type)
                         if (data.isNotEmpty()) {
                             onResult(data, "Fetched ${data.size} ${type.name} records.")
                         } else {
@@ -199,7 +220,6 @@ private fun HealthDataCard(data: HealthData) {
                     "Duration: ${data.durationMinutes} min",
                     color = Color.Blue
                 )
-
                 is HealthData.Water -> Text("Liters: ${data.liters}")
                 is HealthData.Nutrition -> Text("Calories: ${data.calories ?: "N/A"}, Protein: ${data.proteinGrams ?: "N/A"}g")
                 is HealthData.Menstruation -> Text("Recorded Menstrual Flow")
@@ -209,9 +229,12 @@ private fun HealthDataCard(data: HealthData) {
                 is HealthData.IntermenstrualBleeding -> Text("Recorded Intermenstrual Bleeding")
             }
 
-            val displayTime = data.time ?: data.startTime
+            val displayTime =
+                data.time?.toLocalDateTime(TimeZone.currentSystemDefault())?.format(displayFormat)
+                    ?: data.startTime?.toLocalDateTime(TimeZone.currentSystemDefault())
+                        ?.format(displayFormat)
             if (displayTime != null) {
-                Text("Time: $displayTime", style = MaterialTheme.typography.bodyMedium)
+                Text("Time: $displayTime", style = MaterialTheme.typography.bodySmall)
             }
         }
     }
