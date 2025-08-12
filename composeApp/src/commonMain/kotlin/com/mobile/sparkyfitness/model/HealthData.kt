@@ -5,6 +5,7 @@ package com.mobile.sparkyfitness.model
 import kotlinx.datetime.Instant
 import kotlin.time.ExperimentalTime
 
+
 sealed class HealthData(
     open val time: Instant?,
     open val startTime: Instant?,
@@ -36,14 +37,15 @@ sealed class HealthData(
     ) : HealthData(null, startTime, endTime)
 
     data class MoveMinutes(
-        val minutes: Int,
+        val minutes: Long,
         override val startTime: Instant,
         override val endTime: Instant
     ) : HealthData(null, startTime, endTime)
-
     data class ExerciseSession(
         val name: String,
         val durationMinutes: Long,
+        val notes: String?,
+        val segments: List<ExerciseSegment>,
         override val startTime: Instant,
         override val endTime: Instant
     ) : HealthData(null, startTime, endTime)
@@ -86,10 +88,11 @@ sealed class HealthData(
 
     // Vitals
     data class HeartRate(
-        val bpm: Long,
-        override val startTime: Instant,
-        override val endTime: Instant
-    ) : HealthData(null, startTime, endTime)
+        val samples: List<HeartRateSample>,
+        override val time: Instant? = null,
+        override val endTime: Instant? = null,
+        override val startTime: Instant? = null
+    ) : HealthData(time, startTime, endTime)
 
     data class HeartRateVariability(
         val ms: Double,
@@ -99,11 +102,13 @@ sealed class HealthData(
     data class BloodPressure(
         val systolicMmhg: Double,
         val diastolicMmhg: Double,
+        val bodyPosition: String,
         override val time: Instant
     ) : HealthData(time, null, null)
 
     data class BloodGlucose(
         val mgdl: Double,
+        val relationToMeal: String,
         override val time: Instant
     ) : HealthData(time, null, null)
 
@@ -125,6 +130,7 @@ sealed class HealthData(
     // Sleep & Nutrition
     data class SleepSession(
         val durationMinutes: Long,
+        val stages: List<SleepStage>,
         override val startTime: Instant,
         override val endTime: Instant
     ) : HealthData(null, startTime, endTime)
@@ -134,8 +140,8 @@ sealed class HealthData(
         override val startTime: Instant,
         override val endTime: Instant
     ) : HealthData(null, startTime, endTime)
-
     data class Nutrition(
+        val mealType: String,
         val calories: Double?,
         val proteinGrams: Double?,
         val fatGrams: Double?,
@@ -145,14 +151,12 @@ sealed class HealthData(
     ) : HealthData(null, startTime, endTime)
 
     // Cycle Tracking
-    // FLOW_UNKNOWN = 0
-    // FLOW_LIGHT = 1
-    // FLOW_MEDIUM = 2
-    // FLOW_HEAVY = 3
     data class Menstruation(
-        override val time: Instant?,
-        val flow: Int
-    ) : HealthData(time, null, null)
+        val flow: String,
+        override val startTime: Instant? = null,
+        override val endTime: Instant? = null,
+        override val time: Instant? = null
+    ) : HealthData(time, startTime, endTime)
 
     data class OvulationTest(
         val result: String,
@@ -161,9 +165,34 @@ sealed class HealthData(
 
     data class CervicalMucus(
         val quality: String,
+        val sensation: String,
         override val time: Instant
     ) : HealthData(time, null, null)
 
-    data class SexualActivity(override val time: Instant) : HealthData(time, null, null)
+    data class SexualActivity(
+        val protectionUsed: String,
+        override val time: Instant
+    ) : HealthData(time, null, null)
+
     data class IntermenstrualBleeding(override val time: Instant) : HealthData(time, null, null)
+
+    // Nested data classes for detailed info
+    data class SleepStage(
+        val stage: String,
+        val durationMinutes: Long,
+        val startTime: Instant,
+        val endTime: Instant
+    )
+
+    data class HeartRateSample(
+        val bpm: Long,
+        val time: Instant
+    )
+
+    data class ExerciseSegment(
+        val segmentType: String,
+        val repetitions: Long,
+        val startTime: Instant,
+        val endTime: Instant
+    )
 }

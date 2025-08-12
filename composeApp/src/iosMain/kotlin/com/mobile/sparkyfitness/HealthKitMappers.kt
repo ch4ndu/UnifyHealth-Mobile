@@ -4,7 +4,10 @@ import com.mobile.sparkyfitness.model.HealthData
 import com.mobile.sparkyfitness.model.HealthDataType
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.datetime.Instant
+import platform.Foundation.NSNumber
 import platform.Foundation.timeIntervalSince1970
+import platform.HealthKit.HKBloodGlucoseMealTimePostprandial
+import platform.HealthKit.HKBloodGlucoseMealTimePreprandial
 import platform.HealthKit.HKCategorySample
 import platform.HealthKit.HKCategoryTypeIdentifier
 import platform.HealthKit.HKCategoryTypeIdentifierCervicalMucusQuality
@@ -18,12 +21,23 @@ import platform.HealthKit.HKCategoryValueCervicalMucusQualityDry
 import platform.HealthKit.HKCategoryValueCervicalMucusQualityEggWhite
 import platform.HealthKit.HKCategoryValueCervicalMucusQualitySticky
 import platform.HealthKit.HKCategoryValueCervicalMucusQualityWatery
+import platform.HealthKit.HKCategoryValueMenstrualFlowHeavy
+import platform.HealthKit.HKCategoryValueMenstrualFlowLight
+import platform.HealthKit.HKCategoryValueMenstrualFlowMedium
+import platform.HealthKit.HKCategoryValueMenstrualFlowUnspecified
 import platform.HealthKit.HKCategoryValueOvulationTestResultIndeterminate
 import platform.HealthKit.HKCategoryValueOvulationTestResultNegative
 import platform.HealthKit.HKCategoryValueOvulationTestResultPositive
+import platform.HealthKit.HKCategoryValueSleepAnalysisAsleep
+import platform.HealthKit.HKCategoryValueSleepAnalysisAsleepCore
+import platform.HealthKit.HKCategoryValueSleepAnalysisAsleepDeep
+import platform.HealthKit.HKCategoryValueSleepAnalysisAsleepREM
+import platform.HealthKit.HKCategoryValueSleepAnalysisAwake
+import platform.HealthKit.HKCategoryValueSleepAnalysisInBed
 import platform.HealthKit.HKCorrelation
 import platform.HealthKit.HKCorrelationTypeIdentifier
 import platform.HealthKit.HKCorrelationTypeIdentifierBloodPressure
+import platform.HealthKit.HKMetadataKeyBloodGlucoseMealTime
 import platform.HealthKit.HKMetricPrefixDeci
 import platform.HealthKit.HKMetricPrefixKilo
 import platform.HealthKit.HKMetricPrefixMilli
@@ -96,7 +110,7 @@ internal fun HKQuantitySample.toHealthData(type: HealthDataType): HealthData? {
         HealthDataType.MOVE_MINUTES -> HealthData.MoveMinutes(
             this.quantity.doubleValueForUnit(
                 HKUnit.minuteUnit()
-            ).toInt(), startDate, endDate
+            ).toLong(), startDate, endDate
         )
 
         HealthDataType.WEIGHT -> HealthData.Weight(
@@ -142,26 +156,25 @@ internal fun HKQuantitySample.toHealthData(type: HealthDataType): HealthData? {
             ), endDate
         )
 
-        HealthDataType.HEART_RATE -> HealthData.HeartRate(
-            this.quantity.doubleValueForUnit(
-                HKUnit.countUnit().unitDividedByUnit(HKUnit.minuteUnit())
-            ).toLong(),
-            startDate,
-            endDate
-        )
-
         HealthDataType.HEART_RATE_VARIABILITY -> HealthData.HeartRateVariability(
             this.quantity.doubleValueForUnit(
                 HKUnit.secondUnitWithMetricPrefix(HKMetricPrefixMilli)
             ), endDate
         )
 
-        HealthDataType.BLOOD_GLUCOSE -> HealthData.BloodGlucose(
-            this.quantity.doubleValueForUnit(
+        HealthDataType.BLOOD_GLUCOSE -> {
+            val mgdlValue = this.quantity.doubleValueForUnit(
                 HKUnit.gramUnitWithMetricPrefix(HKMetricPrefixMilli)
                     .unitDividedByUnit(HKUnit.literUnitWithMetricPrefix(HKMetricPrefixDeci))
-            ), endDate
-        )
+            )
+            val mealTimeInt = this.metadata?.get(HKMetadataKeyBloodGlucoseMealTime) as? NSNumber
+            val relationToMeal = when (mealTimeInt?.integerValue) {
+                HKBloodGlucoseMealTimePreprandial -> "Before Meal"
+                HKBloodGlucoseMealTimePostprandial -> "After Meal"
+                else -> "Unknown"
+            }
+            HealthData.BloodGlucose(mgdlValue, relationToMeal, endDate)
+        }
 
         HealthDataType.OXYGEN_SATURATION -> HealthData.OxygenSaturation(
             this.quantity.doubleValueForUnit(
@@ -190,7 +203,7 @@ internal fun HKQuantitySample.toHealthData(type: HealthDataType): HealthData? {
             endDate
         )
 
-        else -> null
+        else -> null // HEART_RATE and other complex types are handled separately
     }
 }
 
@@ -200,12 +213,16 @@ internal fun HKCategorySample.toHealthData(type: HealthDataType): HealthData? {
     val endDate = Instant.fromEpochSeconds(this.endDate.timeIntervalSince1970.toLong())
 
     return when (type) {
-        HealthDataType.SLEEP -> {
-            val duration = endDate.epochSeconds - startDate.epochSeconds
-            HealthData.SleepSession(duration / 60, startDate, endDate)
+        HealthDataType.MENSTRUATION -> {
+            val flow = when (this.value) {
+                HKCategoryValueMenstrualFlowLight -> "Light"
+                HKCategoryValueMenstrualFlowMedium -> "Medium"
+                HKCategoryValueMenstrualFlowHeavy -> "Heavy"
+                HKCategoryValueMenstrualFlowUnspecified -> "Unspecified"
+                else -> "None"
+            }
+            HealthData.Menstruation(flow, startDate, endDate)
         }
-
-        HealthDataType.MENSTRUATION -> HealthData.Menstruation(startDate, 0)
         HealthDataType.OVULATION_TEST -> {
             val result = when (this.value) {
                 HKCategoryValueOvulationTestResultPositive -> "Positive"
@@ -215,7 +232,6 @@ internal fun HKCategorySample.toHealthData(type: HealthDataType): HealthData? {
             }
             HealthData.OvulationTest(result, endDate)
         }
-
         HealthDataType.CERVICAL_MUCUS -> {
             val quality = when (this.value) {
                 HKCategoryValueCervicalMucusQualityDry -> "Dry"
@@ -225,13 +241,39 @@ internal fun HKCategorySample.toHealthData(type: HealthDataType): HealthData? {
                 HKCategoryValueCervicalMucusQualityEggWhite -> "EggWhite"
                 else -> "Unknown"
             }
-            HealthData.CervicalMucus(quality, endDate)
+            HealthData.CervicalMucus(
+                quality,
+                "N/A",
+                endDate
+            ) // Sensation not available in this sample type
         }
 
-        HealthDataType.SEXUAL_ACTIVITY -> HealthData.SexualActivity(endDate)
+        HealthDataType.SEXUAL_ACTIVITY -> HealthData.SexualActivity(
+            "N/A",
+            endDate
+        ) // Protection used not available in this sample type
         HealthDataType.INTERMENSTRUAL_BLEEDING -> HealthData.IntermenstrualBleeding(endDate)
-        else -> null
+        else -> null // SLEEP is handled separately
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+internal fun HKCategorySample.toSleepStage(): HealthData.SleepStage? {
+    val startDate = Instant.fromEpochSeconds(this.startDate.timeIntervalSince1970.toLong())
+    val endDate = Instant.fromEpochSeconds(this.endDate.timeIntervalSince1970.toLong())
+    val duration = (endDate.epochSeconds - startDate.epochSeconds) / 60
+
+    val stage = when (this.value) {
+        HKCategoryValueSleepAnalysisInBed -> "InBed"
+        HKCategoryValueSleepAnalysisAsleep -> "Asleep"
+        HKCategoryValueSleepAnalysisAwake -> "Awake"
+        HKCategoryValueSleepAnalysisAsleepCore -> "Core"
+        HKCategoryValueSleepAnalysisAsleepDeep -> "Deep"
+        HKCategoryValueSleepAnalysisAsleepREM -> "REM"
+        else -> "Unknown"
+    }
+
+    return HealthData.SleepStage(stage, duration, startDate, endDate)
 }
 
 @OptIn(ExperimentalForeignApi::class)
@@ -257,12 +299,11 @@ internal fun HKCorrelation.toHealthData(type: HealthDataType): HealthData? {
                 diastolicSample?.quantity?.doubleValueForUnit(HKUnit.millimeterOfMercuryUnit())
 
             if (systolicValue != null && diastolicValue != null) {
-                HealthData.BloodPressure(systolicValue, diastolicValue, endDate)
+                HealthData.BloodPressure(systolicValue, diastolicValue, "Unknown", endDate)
             } else {
                 null
             }
         }
-
         else -> null
     }
 }
@@ -290,17 +331,25 @@ internal fun HealthDataType.getCategory(): HealthDataTypeCategory {
 }
 
 @OptIn(ExperimentalForeignApi::class)
-internal fun HealthDataType.toHkObjectType(): HKObjectType? {
-    return when (this.getCategory()) {
+internal fun HealthDataType.toHkObjectTypes(): Set<HKObjectType> {
+    // Correctly handle Blood Pressure by requesting its constituent types
+    if (this == HealthDataType.BLOOD_PRESSURE) {
+        return setOfNotNull(
+            HKObjectType.quantityTypeForIdentifier(HKQuantityTypeIdentifierBloodPressureSystolic),
+            HKObjectType.quantityTypeForIdentifier(HKQuantityTypeIdentifierBloodPressureDiastolic)
+        )
+    }
+
+    val type = when (this.getCategory()) {
         HealthDataTypeCategory.QUANTITY -> this.toHkQuantityTypeIdentifier()
             ?.let { HKObjectType.quantityTypeForIdentifier(it) }
 
         HealthDataTypeCategory.CATEGORY -> this.toHkCategoryTypeIdentifier()
             ?.let { HKObjectType.categoryTypeForIdentifier(it) }
 
-        HealthDataTypeCategory.CORRELATION -> this.toHkCorrelationTypeIdentifier()
-            ?.let { HKObjectType.correlationTypeForIdentifier(it) }
+        HealthDataTypeCategory.CORRELATION -> null // We handle this in the special case above
     }
+    return setOfNotNull(type)
 }
 
 internal fun HealthDataType.toHkQuantityTypeIdentifier(): HKQuantityTypeIdentifier? {
@@ -340,11 +389,18 @@ internal fun HealthDataType.toHkCategoryTypeIdentifier(): HKCategoryTypeIdentifi
     }
 }
 
-internal fun HealthDataType.toHkCorrelationTypeIdentifier(): HKCorrelationTypeIdentifier? {
-//    HKQuantityTypeIdentifierBloodPressureSystolic
-//    HKQuantityTypeIdentifierBloodPressureDiastolic
-    return when (this) {
+//internal fun HealthDataType.toHkCorrelationTypeIdentifier(): HKCorrelationTypeIdentifier? {
+//    return when (this) {
 //        HealthDataType.BLOOD_PRESSURE -> HKCorrelationTypeIdentifierBloodPressure
-        else -> null
-    }
-}
+//        else -> null
+//    }
+//}
+
+//internal fun HealthDataType.toHkCorrelationTypeIdentifier(): HKCorrelationTypeIdentifier? {
+////    HKQuantityTypeIdentifierBloodPressureSystolic
+////    HKQuantityTypeIdentifierBloodPressureDiastolic
+//    return when (this) {
+//        HealthDataType.BLOOD_PRESSURE -> HKCorrelationTypeIdentifierBloodPressure
+//        else -> null
+//    }
+//}

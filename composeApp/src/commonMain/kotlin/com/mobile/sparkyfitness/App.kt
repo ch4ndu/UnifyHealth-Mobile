@@ -20,8 +20,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,7 +35,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -50,7 +49,7 @@ import kotlinx.datetime.toLocalDateTime
 import kotlin.time.Duration.Companion.days
 
 @Composable
-fun App(healthService: HealthService?) { // Service is now nullable
+fun App(healthService: HealthService?) {
     val coroutineScope = rememberCoroutineScope()
     var hasRequestedPermissions by remember { mutableStateOf(false) }
     var healthData by remember { mutableStateOf<List<HealthData>>(emptyList()) }
@@ -76,21 +75,6 @@ fun App(healthService: HealthService?) { // Service is now nullable
                     message = "No health data source available on this device."
                 } else if (!hasRequestedPermissions) {
                     message = "Ready to connect to health service."
-                }
-
-                BasicText(
-                    modifier = Modifier.fillMaxWidth(),
-                    text = message,
-                    style = MaterialTheme.typography.headlineMedium,
-                    maxLines = 2,
-                    autoSize = TextAutoSize.StepBased(
-                        maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
-                        minFontSize = MaterialTheme.typography.headlineSmall.fontSize
-                    )
-                )
-                if (isLoading) {
-                    Spacer(Modifier.height(16.dp))
-                    CircularProgressIndicator()
                 }
                 Spacer(Modifier.height(16.dp))
 
@@ -125,6 +109,22 @@ fun App(healthService: HealthService?) { // Service is now nullable
                         }
                     )
                 }
+                Spacer(Modifier.height(16.dp))
+
+                BasicText(
+                    modifier = Modifier.fillMaxWidth(),
+                    text = message,
+                    style = MaterialTheme.typography.headlineMedium,
+                    maxLines = 2,
+                    autoSize = TextAutoSize.StepBased(
+                        maxFontSize = MaterialTheme.typography.headlineMedium.fontSize,
+                        minFontSize = MaterialTheme.typography.headlineSmall.fontSize
+                    )
+                )
+                if (isLoading) {
+                    Spacer(Modifier.height(16.dp))
+                    CircularProgressIndicator()
+                }
 
                 Spacer(Modifier.height(16.dp))
 
@@ -147,6 +147,7 @@ private fun DataTypeGrid(
     onResult: (List<HealthData>, String) -> Unit
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val items = remember { HealthDataType.entries.toTypedArray() }
 
     LazyHorizontalGrid(
         rows = GridCells.Fixed(3),
@@ -154,7 +155,7 @@ private fun DataTypeGrid(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(HealthDataType.entries.toTypedArray()) { type ->
+        items(items) { type ->
             Button(
                 modifier = Modifier.height(60.dp).fillMaxWidth(1f),
                 onClick = {
@@ -192,16 +193,21 @@ private fun HealthDataCard(data: HealthData) {
         Column(modifier = Modifier.padding(16.dp)) {
             val title = data::class.simpleName ?: "Health Data"
             Text(title, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-            Divider(modifier = Modifier.padding(vertical = 4.dp))
+            HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
 
-            // Display logic for all new types
             when (data) {
                 is HealthData.Steps -> Text("Count: ${data.count}")
                 is HealthData.Distance -> Text("Meters: ${data.meters}")
                 is HealthData.FloorsClimbed -> Text("Floors: ${data.floors}")
                 is HealthData.ActiveEnergyBurned -> Text("Active Calories: ${data.calories}")
                 is HealthData.MoveMinutes -> Text("Total Exercise Minutes: ${data.minutes}")
-                is HealthData.ExerciseSession -> Text("Duration: ${data.durationMinutes} min")
+                is HealthData.ExerciseSession -> {
+                    Text("Duration: ${data.durationMinutes} min")
+                    Text("Notes: ${data.notes ?: "N/A"}")
+                    data.segments.forEach {
+                        Text("  - Segment: ${it.segmentType} (${it.repetitions} reps)")
+                    }
+                }
                 is HealthData.Weight -> Text("Kilograms: ${data.kilograms}")
                 is HealthData.Height -> Text("Meters: ${data.meters}")
                 is HealthData.BodyFatPercentage -> Text("Percentage: ${data.percentage}%")
@@ -209,23 +215,29 @@ private fun HealthDataCard(data: HealthData) {
                 is HealthData.BodyMassIndex -> Text("BMI: ${data.value}")
                 is HealthData.BodyTemperature -> Text("Celsius: ${data.celsius}")
                 is HealthData.BasalMetabolicRate -> Text("Rate: ${data.kcalPerDay} kcal/day")
-                is HealthData.HeartRate -> Text("BPM: ${data.bpm}", color = Color.Red)
+                is HealthData.HeartRate -> {
+                    Text("Samples: ${data.samples.size}")
+                    val avgBpm = data.samples.map { it.bpm }.average()
+                    Text("Average BPM: ${avgBpm.toInt()}")
+                }
                 is HealthData.HeartRateVariability -> Text("RMSSD (ms): ${data.ms}")
-                is HealthData.BloodPressure -> Text("Systolic: ${data.systolicMmhg}, Diastolic: ${data.diastolicMmhg}")
-                is HealthData.BloodGlucose -> Text("mg/dL: ${data.mgdl}")
+                is HealthData.BloodPressure -> Text("Systolic: ${data.systolicMmhg}, Diastolic: ${data.diastolicMmhg} (${data.bodyPosition})")
+                is HealthData.BloodGlucose -> Text("mg/dL: ${data.mgdl} (${data.relationToMeal})")
                 is HealthData.OxygenSaturation -> Text("Saturation: ${data.percentage}%")
                 is HealthData.RespiratoryRate -> Text("Breaths/min: ${data.rpm}")
                 is HealthData.Vo2Max -> Text("ml/kg/min: ${data.mlPerKgPerMin}")
-                is HealthData.SleepSession -> Text(
-                    "Duration: ${data.durationMinutes} min",
-                    color = Color.Blue
-                )
+                is HealthData.SleepSession -> {
+                    Text("Total Duration: ${data.durationMinutes} min")
+                    data.stages.forEach {
+                        Text("  - ${it.stage}: ${it.durationMinutes} min")
+                    }
+                }
                 is HealthData.Water -> Text("Liters: ${data.liters}")
-                is HealthData.Nutrition -> Text("Calories: ${data.calories ?: "N/A"}, Protein: ${data.proteinGrams ?: "N/A"}g")
-                is HealthData.Menstruation -> Text("Recorded Menstrual Flow")
+                is HealthData.Nutrition -> Text("Meal: ${data.mealType}, Calories: ${data.calories ?: "N/A"}")
+                is HealthData.Menstruation -> Text("Flow: ${data.flow}")
                 is HealthData.OvulationTest -> Text("Result: ${data.result}")
-                is HealthData.CervicalMucus -> Text("Quality: ${data.quality}")
-                is HealthData.SexualActivity -> Text("Recorded Sexual Activity")
+                is HealthData.CervicalMucus -> Text("Quality: ${data.quality}, Sensation: ${data.sensation}")
+                is HealthData.SexualActivity -> Text("Protection Used: ${data.protectionUsed}")
                 is HealthData.IntermenstrualBleeding -> Text("Recorded Intermenstrual Bleeding")
             }
 

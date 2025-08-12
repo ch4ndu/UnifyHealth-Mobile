@@ -2,7 +2,6 @@ package com.mobile.sparkyfitness
 
 import android.app.Activity
 import android.content.Context
-import android.util.Log
 import com.mobile.sparkyfitness.model.HealthData
 import com.mobile.sparkyfitness.model.HealthDataType
 import com.samsung.android.sdk.healthdata.HealthConnectionErrorResult
@@ -39,7 +38,6 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                         continuation.resume(true)
                     }
                 }
-
                 override fun onConnectionFailed(e: HealthConnectionErrorResult) {
                     println("Samsung HealthDataStore connection failed: ${e.errorCode}")
                     isConnected = false
@@ -47,7 +45,6 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                         continuation.resume(false)
                     }
                 }
-
                 override fun onDisconnected() {
                     println("Samsung HealthDataStore disconnected")
                     isConnected = false
@@ -81,10 +78,8 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
 
     override suspend fun requestAuthorization(readTypes: Set<HealthDataType>) {
         if (!isConnected) return
-//        isPermissionSheetVisible.value = true
         val pmsManager = HealthPermissionManager(healthDataStore)
-//        val permissionKeys = readTypes.mapNotNull { it.toSamsungPermissionKey() }.toSet()
-        val permissionKeys = listOf(HealthDataType.STEPS, HealthDataType.SLEEP).map { it.toSamsungPermissionKey() }.toSet()
+        val permissionKeys = readTypes.mapNotNull { it.toSamsungPermissionKey() }.toSet()
 
         return suspendCancellableCoroutine { continuation ->
             try {
@@ -107,44 +102,39 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
         endTime: Instant,
         type: HealthDataType
     ): List<HealthData> {
-        try {
-            val dataType = type.toSamsungDataType() ?: return emptyList()
-            val resolver = HealthDataResolver(healthDataStore, null)
+        if (!isConnected) return emptyList()
+        val dataType = type.toSamsungDataType() ?: return emptyList()
+        val resolver = HealthDataResolver(healthDataStore, null)
 
-            val request = HealthDataResolver.ReadRequest.Builder()
-                .setDataType(dataType)
-                .setLocalTimeRange(
-                    HealthConstants.StepCount.START_TIME,
-                    HealthConstants.StepCount.TIME_OFFSET,
-                    startTime.toEpochMilliseconds(),
-                    endTime.toEpochMilliseconds()
-                )
-                .build()
+        val request = HealthDataResolver.ReadRequest.Builder()
+            .setDataType(dataType)
+            .setLocalTimeRange(
+                HealthConstants.StepCount.START_TIME,
+                HealthConstants.StepCount.TIME_OFFSET,
+                startTime.toEpochMilliseconds(),
+                endTime.toEpochMilliseconds()
+            )
+            .build()
 
-            return suspendCancellableCoroutine { continuation ->
-                val resultListener =
-                    HealthResultHolder.ResultListener<HealthDataResolver.ReadResult> { result ->
-                        try {
-                            val list = mutableListOf<HealthData>()
-                            result.forEach { cursor ->
-                                val healthData = cursor.toHealthData(type)
-                                if (healthData != null) {
-                                    list.add(healthData)
-                                }
+        return suspendCancellableCoroutine { continuation ->
+            val resultListener =
+                HealthResultHolder.ResultListener<HealthDataResolver.ReadResult> { result ->
+                    try {
+                        val list = mutableListOf<HealthData>()
+                        result.forEach { cursor ->
+                            val healthData = cursor.toHealthData(type)
+                            if (healthData != null) {
+                                list.add(healthData)
                             }
-                            continuation.resume(list)
-                        } catch (e: Exception) {
-                            continuation.resumeWithException(e)
-                        } finally {
-                            result.close()
                         }
+                        continuation.resume(list)
+                    } catch (e: Exception) {
+                        continuation.resumeWithException(e)
+                    } finally {
+                        result.close()
                     }
-                resolver.read(request).setResultListener(resultListener)
-            }
-
-        } catch (exception: SecurityException) {
-            Log.e("chandu", "failed to readDate", exception)
-            return emptyList()
+                }
+            resolver.read(request).setResultListener(resultListener)
         }
     }
 
@@ -171,13 +161,12 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
             HealthDataType.OXYGEN_SATURATION -> HealthConstants.OxygenSaturation.HEALTH_DATA_TYPE
             HealthDataType.SLEEP -> HealthConstants.Sleep.HEALTH_DATA_TYPE
             HealthDataType.WATER -> HealthConstants.WaterIntake.HEALTH_DATA_TYPE
-            HealthDataType.NUTRITION -> HealthConstants.Nutrition.HEALTH_DATA_TYPE
+            HealthDataType.NUTRITION -> HealthConstants.FoodIntake.HEALTH_DATA_TYPE
             else -> null // Other types are not directly supported by Samsung SDK
         }
     }
 
     private fun com.samsung.android.sdk.healthdata.HealthData.toHealthData(type: HealthDataType): HealthData? {
-        Log.d("chandu", toString())
         val startTime = Instant.fromEpochMilliseconds(getLong(HealthConstants.Common.CREATE_TIME))
         val endTime = Instant.fromEpochMilliseconds(getLong(HealthConstants.Common.UPDATE_TIME))
 
@@ -205,19 +194,19 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                     HealthConstants.Exercise.CALORIE
                 ).toDouble(), startTime, endTime
             )
-
             HealthDataType.MOVE_MINUTES -> {
                 val duration =
                     (endTime.toEpochMilliseconds() - startTime.toEpochMilliseconds()) / 60000
-                HealthData.MoveMinutes(duration.toInt(), startTime, endTime)
+                HealthData.MoveMinutes(duration, startTime, endTime)
             }
-
             HealthDataType.EXERCISE -> {
                 val duration =
                     (endTime.toEpochMilliseconds() - startTime.toEpochMilliseconds()) / 60000
                 HealthData.ExerciseSession(
                     getString(HealthConstants.Exercise.EXERCISE_TYPE),
                     duration,
+                    null,
+                    emptyList(),
                     startTime,
                     endTime
                 )
@@ -239,20 +228,21 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                 ).toDouble(), endTime
             )
 
-            HealthDataType.HEART_RATE -> HealthData.HeartRate(
-                getLong(HealthConstants.HeartRate.HEART_RATE),
-                startTime,
-                endTime
-            )
-
+            HealthDataType.HEART_RATE -> {
+                val bpm = getLong(HealthConstants.HeartRate.HEART_RATE)
+                val sample = HealthData.HeartRateSample(bpm, endTime)
+                HealthData.HeartRate(listOf(sample), endTime)
+            }
             HealthDataType.BLOOD_PRESSURE -> HealthData.BloodPressure(
                 systolicMmhg = getFloat(HealthConstants.BloodPressure.SYSTOLIC).toDouble(),
                 diastolicMmhg = getFloat(HealthConstants.BloodPressure.DIASTOLIC).toDouble(),
+                bodyPosition = "Unknown",
                 time = endTime
             )
 
             HealthDataType.BLOOD_GLUCOSE -> HealthData.BloodGlucose(
                 getFloat(HealthConstants.BloodGlucose.GLUCOSE).toDouble(),
+                "Unknown",
                 endTime
             )
 
@@ -260,11 +250,11 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                 getFloat(HealthConstants.OxygenSaturation.SPO2).toDouble(),
                 endTime
             )
-
             HealthDataType.SLEEP -> {
                 val duration =
                     (endTime.toEpochMilliseconds() - startTime.toEpochMilliseconds()) / 60000
-                HealthData.SleepSession(duration, startTime, endTime)
+                // Samsung SDK does not provide detailed sleep stages in the same way as Health Connect
+                HealthData.SleepSession(duration, emptyList(), startTime, endTime)
             }
 
             HealthDataType.WATER -> HealthData.Water(
@@ -272,8 +262,8 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                 startTime,
                 endTime
             )
-
             HealthDataType.NUTRITION -> HealthData.Nutrition(
+                mealType = "Unknown",
                 calories = getFloat(HealthConstants.Nutrition.CALORIE).toDouble(),
                 proteinGrams = getFloat(HealthConstants.Nutrition.PROTEIN).toDouble(),
                 fatGrams = getFloat(HealthConstants.Nutrition.TOTAL_FAT).toDouble(),
@@ -281,7 +271,6 @@ class SamsungSdkProvider(private val context: Context) : HealthDataProvider {
                 startTime = startTime,
                 endTime = endTime
             )
-
             else -> null
         }
     }
