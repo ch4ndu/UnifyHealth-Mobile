@@ -1,4 +1,4 @@
-package com.mobile.sparkyfitness.model
+package com.mobile.unifyhealth.model
 
 enum class HealthDataType {
     // Activity

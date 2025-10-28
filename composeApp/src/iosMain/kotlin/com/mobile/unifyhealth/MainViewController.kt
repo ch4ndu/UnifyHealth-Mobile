@@ -1,4 +1,4 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import androidx.compose.ui.window.ComposeUIViewController
 

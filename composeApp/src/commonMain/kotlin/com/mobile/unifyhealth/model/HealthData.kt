@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalTime::class)
 
-package com.mobile.sparkyfitness.model
+package com.mobile.unifyhealth.model
 
 import kotlinx.datetime.Instant
 import kotlin.time.ExperimentalTime
@@ -41,6 +41,7 @@ sealed class HealthData(
         override val startTime: Instant,
         override val endTime: Instant
     ) : HealthData(null, startTime, endTime)
+
     data class ExerciseSession(
         val name: String,
         val durationMinutes: Long,
@@ -176,7 +177,6 @@ sealed class HealthData(
 
     data class IntermenstrualBleeding(override val time: Instant) : HealthData(time, null, null)
 
-    // Nested data classes for detailed info
     data class SleepStage(
         val stage: String,
         val durationMinutes: Long,

@@ -1,4 +1,4 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import android.content.Context
 import androidx.compose.runtime.mutableStateOf
@@ -40,8 +40,8 @@ import androidx.health.connect.client.records.Vo2MaxRecord
 import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
-import com.mobile.sparkyfitness.model.HealthData
-import com.mobile.sparkyfitness.model.HealthDataType
+import com.mobile.unifyhealth.model.HealthData
+import com.mobile.unifyhealth.model.HealthDataType
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.datetime.Instant
 import kotlin.reflect.KClass

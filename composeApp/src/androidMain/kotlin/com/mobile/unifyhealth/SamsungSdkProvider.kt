@@ -1,9 +1,9 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import android.app.Activity
 import android.content.Context
-import com.mobile.sparkyfitness.model.HealthData
-import com.mobile.sparkyfitness.model.HealthDataType
+import com.mobile.unifyhealth.model.HealthData
+import com.mobile.unifyhealth.model.HealthDataType
 import com.samsung.android.sdk.healthdata.HealthConnectionErrorResult
 import com.samsung.android.sdk.healthdata.HealthConstants
 import com.samsung.android.sdk.healthdata.HealthDataResolver

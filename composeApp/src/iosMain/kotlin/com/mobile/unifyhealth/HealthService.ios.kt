@@ -1,9 +1,9 @@
 @file:Suppress("EXPECT_ACTUAL_CLASSIFIERS_ARE_IN_BETA_WARNING")
 
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
-import com.mobile.sparkyfitness.model.HealthData
-import com.mobile.sparkyfitness.model.HealthDataType
+import com.mobile.unifyhealth.model.HealthData
+import com.mobile.unifyhealth.model.HealthDataType
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -208,4 +208,7 @@ actual class HealthService {
             healthStore.executeQuery(query)
         }
     }
+
+    actual val permissionsAvailable: MutableStateFlow<Boolean>
+        get() = MutableStateFlow(false)
 }

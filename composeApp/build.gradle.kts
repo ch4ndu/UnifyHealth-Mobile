@@ -54,11 +54,11 @@ kotlin {
 }
 
 android {
-    namespace = "com.mobile.sparkyfitness"
+    namespace = "com.mobile.unifyhealth"
     compileSdk = libs.versions.android.compileSdk.get().toInt()
 
     defaultConfig {
-        applicationId = "com.mobile.sparkyfitness"
+        applicationId = "com.mobile.unifyhealth"
         minSdk = libs.versions.android.minSdk.get().toInt()
         targetSdk = libs.versions.android.targetSdk.get().toInt()
         versionCode = 1

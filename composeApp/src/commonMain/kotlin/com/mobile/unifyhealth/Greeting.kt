@@ -1,4 +1,4 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 class Greeting {
     private val platform = getPlatform()

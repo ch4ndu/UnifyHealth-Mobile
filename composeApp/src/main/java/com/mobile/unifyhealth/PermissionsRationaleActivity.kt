@@ -1,10 +1,7 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import android.os.Bundle
-import androidx.activity.enableEdgeToEdge
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
 
 class PermissionsRationaleActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {

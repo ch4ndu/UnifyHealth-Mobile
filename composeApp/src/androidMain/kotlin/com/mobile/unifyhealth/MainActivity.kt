@@ -1,4 +1,4 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import android.os.Bundle
 import android.util.Log

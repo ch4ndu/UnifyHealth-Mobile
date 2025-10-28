@@ -1,6 +1,6 @@
 @file:OptIn(ExperimentalMaterial3Api::class)
 
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,8 +39,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.mobile.sparkyfitness.model.HealthData
-import com.mobile.sparkyfitness.model.HealthDataType
+import com.mobile.unifyhealth.model.HealthData
+import com.mobile.unifyhealth.model.HealthDataType
 import kotlinx.coroutines.launch
 import kotlinx.datetime.Clock
 import kotlinx.datetime.TimeZone
@@ -51,7 +51,11 @@ import kotlin.time.Duration.Companion.days
 @Composable
 fun App(healthService: HealthService?) {
     val coroutineScope = rememberCoroutineScope()
-    var hasRequestedPermissions by remember { mutableStateOf(false) }
+    var hasRequestedPermissions by remember() {
+        mutableStateOf(
+            healthService?.permissionsAvailable?.value ?: false
+        )
+    }
     var healthData by remember { mutableStateOf<List<HealthData>>(emptyList()) }
     var message by remember { mutableStateOf("Checking for available health sources...") }
     var isLoading by remember { mutableStateOf(false) }
@@ -66,7 +70,7 @@ fun App(healthService: HealthService?) {
     }
 
     MaterialTheme {
-        Scaffold(topBar = { TopAppBar(title = { Text("KMP Native Health Tracker") }) }) { paddingValues ->
+        Scaffold(topBar = { TopAppBar(title = { Text("UnifyHealth - Mobile health tracker") }) }) { paddingValues ->
             Column(
                 modifier = Modifier.fillMaxSize().padding(paddingValues).padding(16.dp),
                 horizontalAlignment = Alignment.CenterHorizontally

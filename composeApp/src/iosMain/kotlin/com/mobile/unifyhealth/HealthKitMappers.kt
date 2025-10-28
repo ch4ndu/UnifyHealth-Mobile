@@ -1,7 +1,7 @@
-package com.mobile.sparkyfitness
+package com.mobile.unifyhealth
 
-import com.mobile.sparkyfitness.model.HealthData
-import com.mobile.sparkyfitness.model.HealthDataType
+import com.mobile.unifyhealth.model.HealthData
+import com.mobile.unifyhealth.model.HealthDataType
 import kotlinx.cinterop.ExperimentalForeignApi
 import kotlinx.datetime.Instant
 import platform.Foundation.NSNumber
@@ -35,8 +35,6 @@ import platform.HealthKit.HKCategoryValueSleepAnalysisAsleepREM
 import platform.HealthKit.HKCategoryValueSleepAnalysisAwake
 import platform.HealthKit.HKCategoryValueSleepAnalysisInBed
 import platform.HealthKit.HKCorrelation
-import platform.HealthKit.HKCorrelationTypeIdentifier
-import platform.HealthKit.HKCorrelationTypeIdentifierBloodPressure
 import platform.HealthKit.HKMetadataKeyBloodGlucoseMealTime
 import platform.HealthKit.HKMetricPrefixDeci
 import platform.HealthKit.HKMetricPrefixKilo
